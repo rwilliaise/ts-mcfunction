@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import yargs from "yargs";
-import { Initializer } from "./Initializer"
+// import { Initializer } from "./Initializer"
 
 const argv = yargs
 	.usage("Usage: mctsc [options]")
