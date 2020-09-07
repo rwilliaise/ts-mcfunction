@@ -1,0 +1,36 @@
+{
+  "name": "ts-mcfunction",
+  "version": "1.0.0",
+  "description": "A TypeScript compiler for .mcfunction",
+  "main": "out/index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "test": "mocha -r ts-node/register src/**/*.spec.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^4.2.12",
+    "@types/mocha": "^8.0.3",
+    "chai": "^4.2.0",
+    "mocha": "^8.1.3",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@types/cross-spawn": "^6.0.2",
+    "@types/fs-extra": "^9.0.1",
+    "@types/node": "^14.6.4",
+    "@types/yargs": "^15.0.5",
+    "child_process": "^1.0.2",
+    "cross-spawn": "^7.0.3",
+    "fs-extra": "^9.0.1",
+    "path": "^0.12.7",
+    "ts-morph": "^8.1.0",
+    "yargs": "^15.4.1"
+  },
+  "bin": {
+    "mctsc": "out/cli.js"
+  }
+}
