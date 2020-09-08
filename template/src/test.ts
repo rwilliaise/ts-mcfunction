@@ -7,6 +7,6 @@ function calculateVeryImportantThings(a: number, b: number) {
 class Test {
 
 	test(a: number) {
-
+		a += 2;
 	}
 }

@@ -1,5 +1,0 @@
-class CompileState {
-
-}
-
-export = CompileState;

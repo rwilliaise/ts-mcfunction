@@ -26,11 +26,13 @@ export class Compiler {
 export class Transpiler {
 	
 	private currentGroup: Map<string, string> = new Map();
+	private callDummies: Map<ts.Node, string> = new Map();
+	private funcParams: Map<ts.Node, Map<string, string>> = new Map();
 	private globalsInit: Array<string> = [];
 	private globalId: number = 0;
 
 	private usableId(name?: string): string {
-		return (name || "TS") + "_" + ++this.globalId;
+		return (name || "TS") + "_" + this.globalId++;
 	}
 
 	private pushFile(name: string, contents: string) {
@@ -66,9 +68,12 @@ export class Transpiler {
 
 			let name: string = this.usableId(param.getName());
 			if (param.isRestParameter()) {
-				console.warn(`${this.getTracer(param)} ... operator unsupported!`);
-				return;
+				throw new Error(`${this.getTracer(param)} ... operator unsupported!`);
 			}
+			if (!this.funcParams.has(node)) {
+				this.funcParams.set(node, new Map());
+			}
+			this.funcParams.get(node)?.set(param.getName(), name);
 			initStack.push(`scoreboard objectives add ${name} dummy`);
 			paramStack.push(name);
 
@@ -147,6 +152,7 @@ export class Transpiler {
 		}
 		let paramStack = new Array<string>();
 		this.getParameters(node, paramStack, this.globalsInit);
+		this.callDummies.set(node, this.usableId(name + "_calldummy"));
 
 		if (ts.TypeGuards.isBlock(body)) {
 			result += this.transpileBlock(body);
@@ -198,6 +204,34 @@ export class Transpiler {
 		return name;
 	}
 
+	private getUsableParam(node: ts.Node, name: string): string {
+		const parent = 	node.getFirstAncestorByKind(ts.SyntaxKind.FunctionDeclaration) ||
+						node.getFirstAncestorByKind(ts.SyntaxKind.MethodDeclaration) ||
+						node.getFirstAncestorByKind(ts.SyntaxKind.ArrowFunction) ||
+						node.getFirstAncestorByKind(ts.SyntaxKind.Constructor);
+		if (parent) {
+			let param = this.funcParams.get(parent)?.get(name);
+			if (param) {
+				return param;
+			}
+		}
+		return "";
+	}
+
+	private getCallDummy(node: ts.Node): string {
+		const parent = 	node.getFirstAncestorByKind(ts.SyntaxKind.FunctionDeclaration) ||
+						node.getFirstAncestorByKind(ts.SyntaxKind.MethodDeclaration) ||
+						node.getFirstAncestorByKind(ts.SyntaxKind.ArrowFunction) ||
+						node.getFirstAncestorByKind(ts.SyntaxKind.Constructor);
+		if (parent) {
+			let dummy = this.callDummies.get(node);
+			if (dummy) {
+				return dummy;
+			}
+		}
+		return "";
+	}
+
 	private transpileBinaryExpression(node: ts.BinaryExpression): string {
 		const opToken = node.getOperatorToken();
 		const opKind = opToken.getKind();
@@ -206,31 +240,45 @@ export class Transpiler {
 			throw new Error(`${this.getTracer(node)} Binary XOR operator ( ^ ) is not supported! Did you mean to use ** or **=?`);
 		}
 
+		let result = "";
+
 		const lhs = node.getLeft();
 		const rhs = node.getRight();
-		const lhsStr = this.transpileExpression(lhs);
-		const rhsStr = this.transpileExpression(rhs);
+		const callDummy = this.getCallDummy(lhs);
+		let lhsStr = this.transpileExpression(lhs);
+		let rhsStr = this.transpileExpression(rhs);
+		if (ts.TypeGuards.isNumericLiteral(lhs)) {
+			lhsStr = this.createRegister();
+			result += `scoreboard players set @e[tag=${callDummy}] ${lhsStr} ${lhs.getLiteralValue()}\n`
+		}
+		if (ts.TypeGuards.isNumericLiteral(rhs)) {
+			rhsStr = this.createRegister();
+			result += `scoreboard players set @e[tag=${callDummy}] ${rhsStr} ${rhs.getLiteralValue()}\n`
+		}
+		const lhsParam = this.getUsableParam(lhs, lhsStr) || lhsStr; // try and get a parameter for use, or just give up
+		const rhsParam = this.getUsableParam(rhs, rhsStr) || rhsStr;
 		const getOperandStr = () => {
 			switch (opKind) {
 				case ts.SyntaxKind.EqualsToken:
-					return `scoreboard players operation ${lhsStr} = ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} = @e[tag=${callDummy}] ${rhsParam}`;
 				case ts.SyntaxKind.PlusEqualsToken:
-					return `scoreboard players operation ${lhsStr} += ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} += @e[tag=${callDummy}] ${rhsParam}`;
 				case ts.SyntaxKind.MinusEqualsToken:
-					return `scoreboard players operation ${lhsStr} -= ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} -= @e[tag=${callDummy}] ${rhsParam}`;
 				case ts.SyntaxKind.AsteriskEqualsToken:
-					return `scoreboard players operation ${lhsStr} *= ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} *= @e[tag=${callDummy}] ${rhsParam}`;
 				case ts.SyntaxKind.SlashEqualsToken:
-					return `scoreboard players operation ${lhsStr} /= ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} /= @e[tag=${callDummy}] ${rhsParam}`;
 				case ts.SyntaxKind.AsteriskAsteriskEqualsToken:
-					return `scoreboard players operation ${lhsStr} *= ${rhsStr}\nscoreboard players operation ${lhsStr} *= ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} *= @e[tag=${callDummy}] ${rhsParam}` +
+						 `\nscoreboard players operation @e[tag=${callDummy}] ${lhsParam} *= @e[tag=${callDummy}] ${rhsParam}`;
 				case ts.SyntaxKind.PercentEqualsToken:
-					return `scoreboard players operation ${lhsStr} %= ${rhsStr}`;
+					return `scoreboard players operation @e[tag=${callDummy}] ${lhsParam} %= @e[tag=${callDummy}] ${rhsParam}`;
 			}
 			throw new Error(`${this.getTracer(node)} Unrecognized operation!`);
 		}
-		
-		return getOperandStr();
+		result += getOperandStr();
+		return result;
 	}
 
 	private transpilePrefixUnaryExpression(node: ts.PrefixUnaryExpression): string {
@@ -379,6 +427,7 @@ export class Transpiler {
 		}
 		let paramStack = new Array<string>();
 		this.getParameters(node, paramStack, initstack);
+		this.callDummies.set(node, this.usableId(name + "_calldummy"));
 
 		if (ts.TypeGuards.isBlock(body)) {
 			result += this.transpileBlock(body);
@@ -390,6 +439,13 @@ export class Transpiler {
 
 	private transpileBlock(node: ts.Block): string {
 		return this.transpileStatementedNode(node);
+	}
+
+	private registerId: number = 0;
+	private createRegister(): string {
+		let id = `register${this.registerId++}`;
+		this.globalsInit.push(`$scoreboard objectives add ${id} dummy`);
+		return id;
 	}
 
 	public transpile(file: ts.SourceFile) {
