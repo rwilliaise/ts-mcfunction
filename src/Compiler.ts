@@ -90,6 +90,7 @@ export class Transpiler {
 			}
 			return this.transpileBlock(node);
 		} else if (ts.TypeGuards.isImportDeclaration(node)) {
+			return this.transpileImportDeclaration(node);
 		} else if (ts.TypeGuards.isExpressionStatement(node)) {
 			return this.transpileExpressionStatement(node);
 		} else if (ts.TypeGuards.isFunctionDeclaration(node)) {
@@ -160,6 +161,12 @@ export class Transpiler {
 
 		this.pushFile(name, result);
 		return ""; // do not add to initial file
+	}
+
+	private transpileImportDeclaration(node: ts.ImportDeclaration): string {
+		// const module = node.getModuleSpecifierSourceFileOrThrow();
+		// const imports = node.getNamedImports();
+		return "";
 	}
 
 	private transpileCallExpression(node: ts.CallExpression) {
