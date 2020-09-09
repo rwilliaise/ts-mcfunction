@@ -2,7 +2,6 @@ import * as ts from "ts-morph";
 
 // import fs from "fs-extra";
 import path from "path";
-
 type HasParameters =
 	| ts.FunctionExpression
 	| ts.ArrowFunction
@@ -26,10 +25,13 @@ export class Compiler {
 export class Transpiler {
 	
 	private currentGroup: Map<string, string> = new Map();
-	private callDummies: Map<ts.Node, string> = new Map();
 	private funcParams: Map<ts.Node, Map<string, string>> = new Map();
 	private globalsInit: Array<string> = [];
 	private globalId: number = 0;
+	private context: string = "";
+
+	private imports: Map<string, string> = new Map();
+	private nodeImports: Map<string, ts.Node> = new Map(); 
 
 	private usableId(name?: string): string {
 		return (name || "TS") + "_" + this.globalId++;
@@ -37,6 +39,18 @@ export class Transpiler {
 
 	private pushFile(name: string, contents: string) {
 		this.currentGroup.set(name, contents);
+	}
+
+	private tryImport(port: string): string {
+		return this.imports.get(port) || port;
+	}
+
+	private initImport(port: ts.Node, sourceFile = this.context) {
+		if (ts.TypeGuards.isNameableNode(port) && sourceFile) {
+			let name = port.getName() || "";
+			this.nodeImports.set(name, port);
+			this.imports.set(name, sourceFile + "/" + name);
+		}
 	}
 
 	private transpileStatementedNode(node: ts.Node & ts.StatementedNode): string {
@@ -93,6 +107,8 @@ export class Transpiler {
 			return this.transpileImportDeclaration(node);
 		} else if (ts.TypeGuards.isExpressionStatement(node)) {
 			return this.transpileExpressionStatement(node);
+		} else if (ts.TypeGuards.isVariableStatement(node)) {
+			return this.transpileVariableStatement(node);
 		} else if (ts.TypeGuards.isFunctionDeclaration(node)) {
 			return this.transpileFunctionDeclaration(node);
 		} else if (ts.TypeGuards.isClassDeclaration(node)) {
@@ -107,6 +123,37 @@ export class Transpiler {
 			console.warn(this.getTracer(node) + " Uncompilable statement! Possibly fatal!");
 		}
 		return "";
+	}
+
+	private transpileVariableStatement(node: ts.VariableStatement) {
+		const list = node.getFirstChildByKindOrThrow(ts.SyntaxKind.VariableDeclarationList);
+		return this.transpileVariableDeclarationList(list);
+	}
+
+	private transpileVariableDeclarationList(node: ts.VariableDeclarationList) {
+		let declarations = node.getDeclarations();
+		let result = "";
+		declarations.forEach(declaration => {
+			const equalsToken = declaration.getFirstChildByKind(ts.SyntaxKind.EqualsToken);
+			const lhs = declaration.getChildAtIndex(0);
+			const name = this.usableId(lhs.getText());
+			let rhs: ts.Node | undefined;
+			if (equalsToken) {
+				rhs = equalsToken.getNextSibling();
+			}
+
+			let value: string | undefined = undefined;
+			if (rhs) {
+				const rhsStr = this.transpileExpression(rhs as ts.Expression);
+				value = rhsStr;
+			}
+			this.imports.set(lhs.getText(), name);
+			this.globalsInit.push(`scoreboard objectives add ${name} dummy`);
+			if (value) {
+				result += `scoreboard players set @e[tag=${this.callDummy()}] ${name} ${value}\n`
+			}
+		});
+		return result;
 	}
 
 	private transpileExpressionStatement(node: ts.ExpressionStatement): string {
@@ -153,7 +200,6 @@ export class Transpiler {
 		}
 		let paramStack = new Array<string>();
 		this.getParameters(node, paramStack, this.globalsInit);
-		this.callDummies.set(node, this.usableId(name + "_calldummy"));
 
 		if (ts.TypeGuards.isBlock(body)) {
 			result += this.transpileBlock(body);
@@ -169,11 +215,45 @@ export class Transpiler {
 		return "";
 	}
 
-	private transpileCallExpression(node: ts.CallExpression) {
+	private transpileCallExpression(node: ts.CallExpression): string {
 		const exp = node.getExpression();
-		const callPath = this.transpileExpression(exp);
-		const params = this.transpileArguments(node.getArguments() as Array<ts.Expression>);
-		return `${params}\nfunction ${callPath}`;
+		if (ts.TypeGuards.isPropertyAccessExpression(exp)) {
+			return this.transpilePropertyCallExpression(node);
+		} else if (ts.TypeGuards.isSuperExpression(exp)) {
+			const className = exp
+				.getType()
+				.getSymbolOrThrow()
+				.getName();
+			return `function ${this.context}/${className}INIT\n`;
+		} else {
+			const callPath = this.transpileExpression(exp);
+			const params = this.transpileArguments(node.getArguments() as Array<ts.Expression>);
+			return `${params}\nfunction ${callPath}\n`;
+		}
+	}
+
+	private transpilePropertyCallExpression(node: ts.CallExpression): string {
+		const expression = node.getExpression();
+		if (!ts.TypeGuards.isPropertyAccessExpression(expression)) {
+			throw new Error(`${this.getTracer(node)} Expected PropertyAccessExpression`);
+		}
+
+		const subExp = expression.getExpression();
+		const subType = subExp.getType();
+		// let accessPath = this.transpileExpression(subExp);
+		const property = expression.getName();
+		// let params = this.transpileArguments(node.getArguments() as Array<ts.Expression>);
+
+		const subExpTypeSym = subType.getSymbol();
+		if (subExpTypeSym && ts.TypeGuards.isPropertyAccessExpression(expression)) {
+			const subExpTypeName = subExpTypeSym.getEscapedName();
+			const node = this.nodeImports.get(subExpTypeName);
+			const sourceFile = node?.getFirstAncestorByKind(ts.SyntaxKind.SourceFile);
+			if (this.imports.has(subExpTypeName + "_" + property) && sourceFile) {
+				return `function ${sourceFile.getBaseNameWithoutExtension()}/${subExpTypeName + "_" + property}\n`;
+			}
+		}
+		return "";
 	}
 
 	// START LITERALS
@@ -186,7 +266,7 @@ export class Transpiler {
 	}
 
 	private transpileBooleanLiteral(node: ts.BooleanLiteral): string {
-		return "";
+		return node.getLiteralValue() ? "1" : "0";
 	}
 
 	// START EXPRESSIONS
@@ -205,10 +285,10 @@ export class Transpiler {
 
 	private transpileIdentifier(node: ts.Identifier): string {
 		if (node.getType().isUndefined()) {
-			return "test";
+			return "";
 		}
 		let name = node.getText();
-		return name;
+		return this.tryImport(name);
 	}
 
 	private getUsableParam(node: ts.Node, name: string): string {
@@ -225,16 +305,22 @@ export class Transpiler {
 		return "";
 	}
 
-	private getCallDummy(node: ts.Node): string {
-		const parent = 	node.getFirstAncestorByKind(ts.SyntaxKind.FunctionDeclaration) ||
-						node.getFirstAncestorByKind(ts.SyntaxKind.MethodDeclaration) ||
-						node.getFirstAncestorByKind(ts.SyntaxKind.ArrowFunction) ||
-						node.getFirstAncestorByKind(ts.SyntaxKind.Constructor);
-		if (parent) {
-			let dummy = this.callDummies.get(node);
-			if (dummy) {
-				return dummy;
-			}
+	private callDummy(): string {
+		return this.context;
+	}
+
+	private summonCallDummy(): string {
+		let dummy = this.callDummy();
+		if (dummy) {
+			return `summon minecraft:armor_stand 0 0 0 {Tags:["${dummy}"]}\n`;
+		}
+		return "";
+	}
+
+	private killCallDummy(): string {
+		let dummy = this.callDummy();
+		if (dummy) {
+			return `kill @e[tag="${dummy}"]\n`;
 		}
 		return "";
 	}
@@ -251,14 +337,13 @@ export class Transpiler {
 
 		const lhs = node.getLeft();
 		const rhs = node.getRight();
-		const callDummy = this.getCallDummy(lhs);
+		const callDummy = this.callDummy();
 		let lhsStr = this.transpileExpression(lhs);
 		let rhsStr = this.transpileExpression(rhs);
-		if (ts.TypeGuards.isNumericLiteral(lhs)) {
-			lhsStr = this.createRegister();
-			result += `scoreboard players set @e[tag=${callDummy}] ${lhsStr} ${lhs.getLiteralValue()}\n`
-		}
 		if (ts.TypeGuards.isNumericLiteral(rhs)) {
+			if (opKind === ts.SyntaxKind.EqualsToken) {
+				return `scoreboard players set @e[tag=${callDummy}] ${lhsStr} ${rhs.getLiteralValue()}\n`;
+			}
 			rhsStr = this.createRegister();
 			result += `scoreboard players set @e[tag=${callDummy}] ${rhsStr} ${rhs.getLiteralValue()}\n`
 		}
@@ -284,7 +369,7 @@ export class Transpiler {
 			}
 			throw new Error(`${this.getTracer(node)} Unrecognized operation!`);
 		}
-		result += getOperandStr();
+		result += `${getOperandStr()}\n`;
 		return result;
 	}
 
@@ -400,6 +485,7 @@ export class Transpiler {
 	}
 
 	private transpileArguments(args: Array<ts.Expression>) {
+
 		return args.map(arg => this.transpileExpression(arg)).join(", ")
 	}
 
@@ -434,12 +520,10 @@ export class Transpiler {
 		}
 		let paramStack = new Array<string>();
 		this.getParameters(node, paramStack, initstack);
-		this.callDummies.set(node, this.usableId(name + "_calldummy"));
 
 		if (ts.TypeGuards.isBlock(body)) {
 			result += this.transpileBlock(body);
 		}
-
 		this.pushFile(`${className}_${name}`, result);
 		return ""; // do not output to inital file
 	}
@@ -451,15 +535,48 @@ export class Transpiler {
 	private registerId: number = 0;
 	private createRegister(): string {
 		let id = `register${this.registerId++}`;
-		this.globalsInit.push(`$scoreboard objectives add ${id} dummy`);
+		this.globalsInit.push(`scoreboard objectives add ${id} dummy\n`);
 		return id;
+	}
+
+	private import(file: ts.SourceFile) {
+		file.getFunctions().forEach(func => {
+			this.initImport(func);
+		});
+		file.getClasses().forEach(clas => {
+			let className = clas.getName();
+			if (className) {
+				this.imports.set(className, this.context + "/" + className);
+				this.nodeImports.set(className, clas);
+			}
+			clas.getMethods().forEach(method => {
+				let name = method.getName();
+				if (className) {
+					this.imports.set(className + name, this.context + "/" + className + "_" + name);
+				} else {
+					this.imports.set("_" + name, this.context + "/" + name);
+				}
+			});
+			clas.getStaticMethods().forEach(method => {
+				let name = method.getName();
+				if (className) {
+					this.imports.set(className + name, this.context + "/" + className + "_" + name);
+				} else {
+					this.imports.set("_" + name, this.context + "/" + name);
+				}
+			});
+		});
 	}
 
 	public transpile(file: ts.SourceFile) {
 		this.currentGroup.clear();
 		this.globalsInit = new Array();
+		this.context = file.getBaseNameWithoutExtension();
+		this.import(file);
 		let outFile = this.transpileStatementedNode(file);
 		outFile = this.globalsInit.join("\n") + outFile;
+		outFile = this.summonCallDummy() + outFile;
+		outFile += this.killCallDummy();
 		this.pushFile(file.getBaseNameWithoutExtension(), outFile);
 		return new Map(this.currentGroup); // do NOT return the private map
 	}

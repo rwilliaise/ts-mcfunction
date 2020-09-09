@@ -1,12 +1,18 @@
-calculateVeryImportantThings(2, 1);
+let variable = 2;
 
-function calculateVeryImportantThings(a: number, b: number) {
-	a += b;
+function increment() {
+	variable += 1;
 }
 
-class Test {
+class Incrementer {
 
-	test(a: number) {
-		a += 2;
+	increment() {
+		variable += 1;
+	}
+
+	static test() {
+		variable += 1;
 	}
 }
+
+Incrementer.test();
