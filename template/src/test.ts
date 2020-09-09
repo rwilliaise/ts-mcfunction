@@ -1,10 +1,13 @@
+//skipdummy
 let variable = 2;
 
-function increment() {
-	variable += 1;
+function increment(a: number) {
+	variable += a;
+	console.log(a);
+	console.log(variable);
 }
 
-class Incrementer {
+export class Incrementer {
 
 	increment() {
 		variable += 1;
@@ -15,4 +18,5 @@ class Incrementer {
 	}
 }
 
-Incrementer.test();
+
+console.log(variable);

@@ -1,7 +1,8 @@
 import * as ts from "ts-morph";
 
-// import fs from "fs-extra";
+import fs from "fs-extra";
 import path from "path";
+
 type HasParameters =
 	| ts.FunctionExpression
 	| ts.ArrowFunction
@@ -14,10 +15,30 @@ type HasParameters =
 export class Compiler {
 	public project: ts.Project;
 	public transpiler: Transpiler = new Transpiler();
+	public filePath: string;
 
 	constructor(filePath = ".") {
+		this.filePath = filePath;
 		this.project = new ts.Project({
 			tsConfigFilePath: path.join(filePath, "tsconfig.json")
+		});
+	}
+
+	compile() {
+		let outPath = path.join(this.filePath, "out");
+		fs.emptyDirSync(outPath);
+		this.project.getSourceFiles().forEach(sourceFile => {
+			let sourcePath = path.join(outPath, sourceFile.getBaseNameWithoutExtension());
+			let map = this.transpiler.transpile(sourceFile);
+			fs.emptyDirSync(sourcePath);
+			for (const [key, contents] of map.entries()) {
+				let filePath = path.join(sourcePath, key);
+				fs.writeFile(filePath + ".mcfunction", contents, err => {
+					if (err) {
+						throw err;
+					}
+				});
+			}
 		});
 	}
 }
@@ -30,7 +51,10 @@ export class Transpiler {
 	private globalId: number = 0;
 	private context: string = "";
 
+	private killDummy: boolean = true;
+
 	private imports: Map<string, string> = new Map();
+	private variables: Map<string, string> = new Map();
 	private nodeImports: Map<string, ts.Node> = new Map(); 
 
 	private usableId(name?: string): string {
@@ -89,6 +113,7 @@ export class Transpiler {
 			}
 			this.funcParams.get(node)?.set(param.getName(), name);
 			initStack.push(`scoreboard objectives add ${name} dummy`);
+			this.variables.set(param.getName(), name);
 			paramStack.push(name);
 
 			if (param.isParameterProperty()) {
@@ -136,7 +161,7 @@ export class Transpiler {
 		declarations.forEach(declaration => {
 			const equalsToken = declaration.getFirstChildByKind(ts.SyntaxKind.EqualsToken);
 			const lhs = declaration.getChildAtIndex(0);
-			const name = this.usableId(lhs.getText());
+			const name = this.variables.get(lhs.getText());
 			let rhs: ts.Node | undefined;
 			if (equalsToken) {
 				rhs = equalsToken.getNextSibling();
@@ -147,8 +172,7 @@ export class Transpiler {
 				const rhsStr = this.transpileExpression(rhs as ts.Expression);
 				value = rhsStr;
 			}
-			this.imports.set(lhs.getText(), name);
-			this.globalsInit.push(`scoreboard objectives add ${name} dummy`);
+			this.imports.set(lhs.getText(), name || "");
 			if (value) {
 				result += `scoreboard players set @e[tag=${this.callDummy()}] ${name} ${value}\n`
 			}
@@ -242,15 +266,25 @@ export class Transpiler {
 		const subType = subExp.getType();
 		// let accessPath = this.transpileExpression(subExp);
 		const property = expression.getName();
-		// let params = this.transpileArguments(node.getArguments() as Array<ts.Expression>);
-
+		let params = node.getArguments() as Array<ts.Expression>;
+		const firstParam = params[0];
 		const subExpTypeSym = subType.getSymbol();
 		if (subExpTypeSym && ts.TypeGuards.isPropertyAccessExpression(expression)) {
 			const subExpTypeName = subExpTypeSym.getEscapedName();
 			const node = this.nodeImports.get(subExpTypeName);
 			const sourceFile = node?.getFirstAncestorByKind(ts.SyntaxKind.SourceFile);
-			if (this.imports.has(subExpTypeName + "_" + property) && sourceFile) {
-				return `function ${sourceFile.getBaseNameWithoutExtension()}/${subExpTypeName + "_" + property}\n`;
+			if (subExpTypeName === "Console" && ts.TypeGuards.isStringLiteral(firstParam)) {
+				return `say ${firstParam.getLiteralText()}`;
+			} else if (subExpTypeName === "Console"
+					&& firstParam.getKind() === ts.SyntaxKind.Identifier 
+					&& this.variables.has(firstParam.getText())) {
+				return `execute as @e[tag=${this.callDummy()}] tellraw @a {"score":{"name":"@s","objective":"${this.variables.get(firstParam.getText())}"}}`
+			}
+			if (this.imports.has(subExpTypeName + property) && sourceFile) {
+				console.log("courgh");
+				console.log(node?.getFullText());
+				console.log(subExpTypeName, property);
+				return `function ${this.imports.get(subExpTypeName + property)}\n`;
 			}
 		}
 		return "";
@@ -386,6 +420,9 @@ export class Transpiler {
 	}
 
 	private transpileNewExpression(node: ts.NewExpression): string {
+		if (!node.getFirstChildByKind(ts.SyntaxKind.OpenParenToken)) {
+			throw new Error(`${this.getTracer(node)} Parentheses-less new expressions are not allowed!`);
+		}
 		return "";
 	}
 
@@ -535,13 +572,62 @@ export class Transpiler {
 	private registerId: number = 0;
 	private createRegister(): string {
 		let id = `register${this.registerId++}`;
-		this.globalsInit.push(`scoreboard objectives add ${id} dummy\n`);
+		this.globalsInit.push(`scoreboard objectives add ${id} dummy`);
 		return id;
 	}
 
 	private import(file: ts.SourceFile) {
 		file.getFunctions().forEach(func => {
 			this.initImport(func);
+		});
+		file.getImportDeclarations().forEach(importDec => {
+			let source = importDec.getModuleSpecifierSourceFile();
+			let imports = importDec.getNamedImports();
+			if (imports.length > 0 && source) {
+					imports.forEach(imort => {
+						let baseName = imort.getName();
+						let sauce: ts.SourceFile = source!;
+						for (const [name, declarations] of sauce.getExportedDeclarations()) {
+							if (baseName !== name) { continue; }
+							this.imports.set(name, sauce.getBaseNameWithoutExtension() + "/" + name);
+							declarations.forEach(declaration => {
+								if (ts.TypeGuards.isClassDeclaration(declaration)) {
+									declaration.getMethods().forEach(method => {
+										let mame = method.getName();
+										this.imports.set(name + mame, sauce.getBaseNameWithoutExtension() + "/" + name + "_" + mame);
+									});
+									declaration.getStaticMethods().forEach(method => {
+										let mame = method.getName();
+										this.imports.set(name + mame, sauce.getBaseNameWithoutExtension() + "/" + name + "_" + mame);
+									});
+								}
+							});
+						}
+					});
+			} else if (source) {
+				let sauce: ts.SourceFile = source;
+				for (const [name, declarations] of sauce.getExportedDeclarations()) {
+					this.imports.set(name, sauce.getBaseNameWithoutExtension() + "/" + name);
+					declarations.forEach(declaration => {
+						if (ts.TypeGuards.isClassDeclaration(declaration)) {
+							declaration.getMethods().forEach(method => {
+								let mame = method.getName();
+								this.imports.set(name + mame, sauce.getBaseNameWithoutExtension() + "/" + name + "_" + mame);
+							});
+							declaration.getStaticMethods().forEach(method => {
+								let mame = method.getName();
+								this.imports.set(name + mame, sauce.getBaseNameWithoutExtension() + "/" + name + "_" + mame);
+							});
+						}
+					});
+				}
+			}
+		})
+		file.getVariableDeclarations().forEach(declaration => {
+			const lhs = declaration.getChildAtIndex(0);
+			const name = this.usableId(lhs.getText());
+			this.globalsInit.push(`scoreboard objectives add ${name} dummy`);
+			this.variables.set(lhs.getText(), name);
 		});
 		file.getClasses().forEach(clas => {
 			let className = clas.getName();
@@ -573,10 +659,20 @@ export class Transpiler {
 		this.globalsInit = new Array();
 		this.context = file.getBaseNameWithoutExtension();
 		this.import(file);
+		file.getStatementsWithComments().forEach(node => {
+			node.getLeadingCommentRanges().forEach(comment => {
+				if (comment.getText().substr(2) === "skipdummy") {
+					console.log("Found a \"skipdummy\" comment. Skipping killing the callDummy.")
+					this.killDummy = false;
+				}
+			});
+		});
 		let outFile = this.transpileStatementedNode(file);
-		outFile = this.globalsInit.join("\n") + outFile;
+		outFile = this.globalsInit.join("\n") + "\n" + outFile;
 		outFile = this.summonCallDummy() + outFile;
-		outFile += this.killCallDummy();
+		if (this.killDummy) {
+			outFile += this.killCallDummy();
+		}
 		this.pushFile(file.getBaseNameWithoutExtension(), outFile);
 		return new Map(this.currentGroup); // do NOT return the private map
 	}

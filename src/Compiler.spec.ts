@@ -3,14 +3,10 @@ import { Compiler } from "./Compiler";
 import "mocha";
 
 describe("Compiler", () => {
-
-})
-
-describe("Transpiler", () => {
-	describe("#transpile()", () => {
-		it("should correctly output a valid mcfunction group", () => {
+	describe("#compile()", () => {
+		it("should correctly, without error, output a valid output", () => {
 			let compiler: Compiler = new Compiler("./template");
-			console.log(compiler.transpiler.transpile(compiler.project.getSourceFiles()[0]));
+			compiler.compile();
 		})
 	})
-})
+});
