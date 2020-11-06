@@ -1,16 +1,11 @@
 {
   "compilerOptions": {
-		"declaration": true,
-		"module": "commonjs",
-		"outDir": "out",
-		"rootDir": "src",
-		"target": "es6",
-		"strict": true,
-		"noFallthroughCasesInSwitch": true,
-		"strictNullChecks": true,
-		"noUnusedLocals": true,
-		"esModuleInterop": true,
-		"removeComments": true
+      "declaration": true,
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "outDir": "out",
+      "rootDir": "src",
+      "target": "es6"
   },
   "include": [
     "src"

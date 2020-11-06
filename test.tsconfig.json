@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "rootDir": "test",
+    "outDir": "test_out",
+    "target": "es5",
+    "sourceMap": true,
+    "plugins": [
+      { "transform": "./src/compiler.ts" }
+    ]
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}
