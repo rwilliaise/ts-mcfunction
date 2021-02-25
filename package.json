@@ -5,7 +5,7 @@
   "main": "out/index.js",
   "scripts": {
     "build": "npx tsc",
-    "test": "ttsc -p test.tsconfig.json"
+    "test": "tsc && mctsc test/index.js test/index.mcfunction"
   },
   "keywords": [],
   "author": "",

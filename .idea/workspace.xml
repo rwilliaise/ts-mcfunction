@@ -20,15 +20,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="961dcc5b-f3eb-441e-b018-affbfc1fcea3" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/cli.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/compiler.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/emitter.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test.tsconfig.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cli.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/cli.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/emitter.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/index.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/tsconfig.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.tsconfig.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/index.mcfunction" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,11 +39,18 @@
       <list>
         <option value="tsconfig.json" />
         <option value="TypeScript File" />
+        <option value="JavaScript File" />
       </list>
     </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="JsFlowSettings">
+    <service-enabled>true</service-enabled>
+    <exe-path />
+    <other-services-enabled>true</other-services-enabled>
+    <auto-save>true</auto-save>
   </component>
   <component name="ProjectId" id="1jtDhxQQiHWenjWIpeUXQr8X5IR" />
   <component name="ProjectViewState">
@@ -62,7 +68,8 @@
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="nodejs_package_manager_path" value="npm" />
-    <property name="ts.external.directory.path" value="$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/jsLanguageServicesImpl/external" />
+    <property name="settings.editor.selected.configurable" value="Settings.JavaScript" />
+    <property name="ts.external.directory.path" value="$PROJECT_DIR$/node_modules/typescript/lib" />
     <property name="vue.rearranger.settings.migration" value="true" />
   </component>
   <component name="RecentsManager">
@@ -92,6 +99,11 @@
       <option name="presentableId" value="Default" />
       <updated>1604614616887</updated>
       <workItem from="1604614617970" duration="7135000" />
+      <workItem from="1604623821931" duration="5000" />
+      <workItem from="1604703204554" duration="6131000" />
+      <workItem from="1604781089143" duration="14000" />
+      <workItem from="1605042477342" duration="487000" />
+      <workItem from="1605292538122" duration="29000" />
     </task>
     <task id="LOCAL-00001" summary="Remove bad code">
       <created>1604615367351</created>
@@ -105,12 +117,6 @@
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-    <option name="exactExcludedFiles">
-      <list>
-        <option value="$PROJECT_DIR$/test/index.js.map" />
-        <option value="$PROJECT_DIR$/test/index.js" />
-      </list>
-    </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -122,6 +128,7 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Remove bad code" />
@@ -132,25 +139,37 @@
       <screen x="0" y="23" width="1920" height="993" />
     </state>
     <state x="424" y="181" width="1071" height="724" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604617306610" />
-    <state x="698" y="273" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1604617595456">
+    <state x="681" y="328" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1604704248764">
       <screen x="0" y="23" width="1920" height="993" />
     </state>
-    <state x="698" y="273" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604617595456" />
-    <state width="1899" height="269" key="GridCell.Tab.0.bottom" timestamp="1604623753442">
+    <state x="681" y="328" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604704248764" />
+    <state x="773" y="242" key="#com.intellij.ide.util.MemberChooser" timestamp="1604706647790">
       <screen x="0" y="23" width="1920" height="993" />
     </state>
-    <state width="1899" height="269" key="GridCell.Tab.0.bottom/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604623753442" />
-    <state width="1899" height="269" key="GridCell.Tab.0.center" timestamp="1604623753441">
+    <state x="773" y="242" key="#com.intellij.ide.util.MemberChooser/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604706647790" />
+    <state x="698" y="273" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1604703902920">
       <screen x="0" y="23" width="1920" height="993" />
     </state>
-    <state width="1899" height="269" key="GridCell.Tab.0.center/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604623753441" />
-    <state width="1899" height="269" key="GridCell.Tab.0.left" timestamp="1604623753437">
+    <state x="698" y="273" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604703902920" />
+    <state width="1899" height="269" key="GridCell.Tab.0.bottom" timestamp="1604709596016">
       <screen x="0" y="23" width="1920" height="993" />
     </state>
-    <state width="1899" height="269" key="GridCell.Tab.0.left/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604623753437" />
-    <state width="1899" height="269" key="GridCell.Tab.0.right" timestamp="1604623753442">
+    <state width="1899" height="269" key="GridCell.Tab.0.bottom/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604709596016" />
+    <state width="1899" height="269" key="GridCell.Tab.0.center" timestamp="1604709596016">
       <screen x="0" y="23" width="1920" height="993" />
     </state>
-    <state width="1899" height="269" key="GridCell.Tab.0.right/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604623753442" />
+    <state width="1899" height="269" key="GridCell.Tab.0.center/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604709596016" />
+    <state width="1899" height="269" key="GridCell.Tab.0.left" timestamp="1604709596014">
+      <screen x="0" y="23" width="1920" height="993" />
+    </state>
+    <state width="1899" height="269" key="GridCell.Tab.0.left/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604709596014" />
+    <state width="1899" height="269" key="GridCell.Tab.0.right" timestamp="1604709596016">
+      <screen x="0" y="23" width="1920" height="993" />
+    </state>
+    <state width="1899" height="269" key="GridCell.Tab.0.right/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604709596016" />
+    <state x="469" y="158" key="SettingsEditor" timestamp="1604704502512">
+      <screen x="0" y="23" width="1920" height="993" />
+    </state>
+    <state x="469" y="158" key="SettingsEditor/0.23.1920.993/1920.129.1440.877@0.23.1920.993" timestamp="1604704502512" />
   </component>
 </project>
